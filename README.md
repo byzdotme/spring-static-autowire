@@ -1,0 +1,1 @@
+Inject spring beans into utility classes for static properties 

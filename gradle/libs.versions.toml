@@ -1,0 +1,7 @@
+[versions]
+spring = "5.3.39"
+slf4j = "1.7.36"
+
+[libraries]
+spring-context = { group = "org.springframework", name = "spring-context", version.ref = "spring" }
+slf4j-api = { group = "org.slf4j", name = "slf4j-api", version.ref = "slf4j" }
