@@ -71,6 +71,7 @@ public class StaticAutowireProcessor implements BeanFactoryAware, SmartInitializ
     private void processDeclaredStaticProperties(Class<?> utilityClass, MergedAnnotation<AssignBean>[] assignments, boolean strict) {
         Arrays.stream(assignments).forEach(assignment -> {
             String propertyName = assignment.getString(MergedAnnotation.VALUE);
+            String beanName = assignment.getString("beanName");
             try {
                 Field field = utilityClass.getDeclaredField(propertyName);
                 if (!Modifier.isStatic(field.getModifiers()) || Modifier.isFinal(field.getModifiers())) {
@@ -81,7 +82,7 @@ public class StaticAutowireProcessor implements BeanFactoryAware, SmartInitializ
                 if (beanType == void.class) {
                     beanType = field.getType();
                 }
-                processField(field, beanType, strict);
+                processField(field, beanType, beanName, strict);
             } catch (NoSuchFieldException e) {
                 processStrict(strict, "Utility class " + utilityClass.getName() + " has no private field named " + propertyName, e);
             }
@@ -89,13 +90,24 @@ public class StaticAutowireProcessor implements BeanFactoryAware, SmartInitializ
     }
 
     private void processAllStaticProperties(Class<?> utilityClass, boolean strict) {
-        Arrays.stream(utilityClass.getDeclaredFields()).filter(it -> Modifier.isStatic(it.getModifiers()) && !Modifier.isFinal(it.getModifiers()))
-                .forEach(field -> processField(field, field.getType(), strict));
+        Arrays.stream(utilityClass.getDeclaredFields())
+                .filter(it -> Modifier.isStatic(it.getModifiers()) && !Modifier.isFinal(it.getModifiers()))
+                .forEach(field -> processField(field, field.getType(), "", strict));
     }
 
-    private void processField(Field field, Class<?> beanType, boolean strict) {
+    private void processField(Field field, Class<?> beanType, String beanName, boolean strict) {
         try {
-            Object bean = Objects.requireNonNull(beanFactory).getBean(beanType);
+            Object bean;
+            if (beanName != null && !beanName.isEmpty()) {
+                try {
+                    bean = Objects.requireNonNull(beanFactory).getBean(beanName, beanType);
+                } catch (BeansException e) {
+                    // fall back to by-type lookup if by-name failed
+                    bean = Objects.requireNonNull(beanFactory).getBean(beanType);
+                }
+            } else {
+                bean = Objects.requireNonNull(beanFactory).getBean(beanType);
+            }
             ReflectionUtils.makeAccessible(field);
             field.set(null, bean);
         } catch (BeansException e) {
