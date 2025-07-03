@@ -11,10 +11,25 @@ import java.lang.annotation.Target;
 @Repeatable(AutowireStatic.List.class)
 public @interface AutowireStatic {
 
+    /**
+     * your utility class
+     *
+     * @return utility class
+     */
     Class<?> value();
 
+    /**
+     * assignments strategy. empty mean all nonfinal static fields should be injected
+     *
+     * @return assignments strategy
+     */
     AssignBean[] assignments() default {};
 
+    /**
+     * when strict, fail injection for any reason will cause spring application start fail
+     *
+     * @return strict mode or not
+     */
     boolean strict() default false;
 
     @Target(ElementType.TYPE)

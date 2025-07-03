@@ -20,7 +20,8 @@ Inject Spring beans into **static** fields of your utility classes in a safe and
 
 ## Quick Start
 
-### 1. Add dependency _(Gradle)_
+### 1. Add dependency
+#### gradle
 
 ```kotlin
 repositories {
@@ -30,6 +31,14 @@ repositories {
 dependencies {
     implementation("me.byz:spring-static-autowire:<latest-version>")
 }
+```
+#### maven
+```xml
+<dependency>
+    <groupId>me.byz</groupId>
+    <artifactId>spring-static-autowire</artifactId>
+    <version>latest</version>
+</dependency>
 ```
 
 ### 2. Enable the processor
@@ -67,7 +76,7 @@ If the `assignments` array is **omitted**, _all_ suitable fields of the target u
 ## Real-world Example
 
 See the [`spring-static-autowire-test`](./spring-static-autowire-test) module for a fully working Spring Boot demo application.
-Run it with `./gradlew :spring-static-autowire-test:bootRun` and observe the logs.
+Run it with `mvn spring-boot:run` and observe the logs.
 
 ---
 
@@ -79,7 +88,7 @@ Run it with `./gradlew :spring-static-autowire-test:bootRun` and observe the log
 
 ---
 
-## Future Work
+## Future Work _(maybe)_
 
 * Support for Bean `Qualifier`s and/or `@Profile`s.
 * Optional reset mechanism on application shutdown (clear static fields).
