@@ -1,5 +1,5 @@
 [versions]
-spring = "5.3.39"
+spring = "5.0.20.RELEASE"
 slf4j = "1.7.36"
 
 [libraries]

@@ -7,17 +7,13 @@ import org.springframework.beans.factory.BeanFactory;
 import org.springframework.beans.factory.BeanFactoryAware;
 import org.springframework.beans.factory.ListableBeanFactory;
 import org.springframework.beans.factory.SmartInitializingSingleton;
-import org.springframework.core.annotation.MergedAnnotation;
-import org.springframework.core.annotation.MergedAnnotations;
-import org.springframework.lang.NonNull;
-import org.springframework.lang.Nullable;
+import org.springframework.core.annotation.AnnotatedElementUtils;
 import org.springframework.util.ReflectionUtils;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.util.Arrays;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -26,11 +22,10 @@ public class StaticAutowireProcessor implements BeanFactoryAware, SmartInitializ
 
     private static final Logger log = LoggerFactory.getLogger(StaticAutowireProcessor.class);
 
-    @Nullable
     private ListableBeanFactory beanFactory;
 
     @Override
-    public void setBeanFactory(@NonNull BeanFactory beanFactory) throws BeansException {
+    public void setBeanFactory(BeanFactory beanFactory) throws BeansException {
         if (beanFactory instanceof ListableBeanFactory) {
             this.beanFactory = (ListableBeanFactory) beanFactory;
         } else {
@@ -50,17 +45,21 @@ public class StaticAutowireProcessor implements BeanFactoryAware, SmartInitializ
         if (annotatedClasses.isEmpty()) {
             log.warn("[StaticAutowireProcessor]: No beans annotated with @AutowireStatic");
         }
-        List<MergedAnnotation<AutowireStatic>> autowireStatics = annotatedClasses.stream()
-                .flatMap(it -> MergedAnnotations.from(it, MergedAnnotations.SearchStrategy.TYPE_HIERARCHY).stream(AutowireStatic.class))
-                .collect(Collectors.toList());
+        Set<AutowireStatic> autowireStatics = annotatedClasses.stream()
+                .flatMap(it -> AnnotatedElementUtils.findMergedRepeatableAnnotations(
+                        it,
+                        AutowireStatic.class,
+                        AutowireStatic.List.class
+                ).stream())
+                .collect(Collectors.toSet());
         log.debug("[StaticAutowireProcessor]{} AutowireStatic found", autowireStatics.size());
         autowireStatics.forEach(this::processAutowireStatic);
     }
 
-    private void processAutowireStatic(MergedAnnotation<AutowireStatic> annotation) {
-        boolean strict = annotation.getBoolean("strict");
-        Class<?> utilityClass = annotation.getClass(MergedAnnotation.VALUE);
-        MergedAnnotation<AssignBean>[] assignments = annotation.getAnnotationArray("assignments", AssignBean.class);
+    private void processAutowireStatic(AutowireStatic annotation) {
+        boolean strict = annotation.strict();
+        Class<?> utilityClass = annotation.value();
+        AssignBean[] assignments = annotation.assignments();
         if (assignments.length == 0) {
             processAllStaticProperties(utilityClass, strict);
         } else {
@@ -68,17 +67,17 @@ public class StaticAutowireProcessor implements BeanFactoryAware, SmartInitializ
         }
     }
 
-    private void processDeclaredStaticProperties(Class<?> utilityClass, MergedAnnotation<AssignBean>[] assignments, boolean strict) {
+    private void processDeclaredStaticProperties(Class<?> utilityClass, AssignBean[] assignments, boolean strict) {
         Arrays.stream(assignments).forEach(assignment -> {
-            String propertyName = assignment.getString(MergedAnnotation.VALUE);
-            String beanName = assignment.getString("beanName");
+            String propertyName = assignment.value();
+            String beanName = assignment.beanName();
             try {
                 Field field = utilityClass.getDeclaredField(propertyName);
                 if (!Modifier.isStatic(field.getModifiers()) || Modifier.isFinal(field.getModifiers())) {
                     processStrict(strict, propertyName + " of utility class " + utilityClass.getName() + " is not static or final");
                     return;
                 }
-                Class<?> beanType = assignment.getClass("beanType");
+                Class<?> beanType = assignment.beanType();
                 if (beanType == void.class) {
                     beanType = field.getType();
                 }
